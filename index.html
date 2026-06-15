@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵巧手 WebBLE 控制台</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        button { font-size: 20px; padding: 15px 30px; margin: 10px; border-radius: 10px; cursor: pointer; }
+        #connectBtn { background-color: #4CAF50; color: white; border: none; }
+        .cmdBtn { background-color: #008CBA; color: white; border: none; display: none; }
+        #status { margin: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+    <h2>🤖 灵巧手 WebBLE 控制台</h2>
+    <div id="status">状态: 未连接</div>
+    
+    <button id="connectBtn" onclick="connectBLE()">连接灵巧手</button>
+    <br>
+    <!-- 这些指令按钮连接后才会显示 -->
+    <button class="cmdBtn" onclick="sendCommand(1)">✊ 抓取</button>
+    <button class="cmdBtn" onclick="sendCommand(2)">🖐️ 松开</button>
+    <button class="cmdBtn" onclick="sendCommand(3)">👊 握拳</button>
+
+    <script>
+        // 定义我们将在 ESP32 代码中设置的专属 UUID
+        const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
+        const CHARACTERISTIC_UUID = '12345678-1234-5678-1234-56789abcdef1';
+        let bleCharacteristic = null;
+
+        async function connectBLE() {
+            try {
+                document.getElementById('status').innerText = "状态: 正在搜索蓝牙设备...";
+                // 请求连接设备（过滤名称为 "ESP32_Hand" 的设备）
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'ESP32_Hand' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                document.getElementById('status').innerText = "状态: 正在连接 GATT 服务器...";
+                const server = await device.gatt.connect();
+                
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+                document.getElementById('status').innerText = "状态: ✅ 已成功连接灵巧手！";
+                document.getElementById('connectBtn').style.display = 'none';
+                
+                // 显示控制按钮
+                document.querySelectorAll('.cmdBtn').forEach(btn => btn.style.display = 'inline-block');
+
+                // 监听断开连接
+                device.addEventListener('gattserverdisconnected', () => {
+                    document.getElementById('status').innerText = "状态: ❌ 连接已断开";
+                    document.getElementById('connectBtn').style.display = 'inline-block';
+                    document.querySelectorAll('.cmdBtn').forEach(btn => btn.style.display = 'none');
+                });
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = "状态: 连接失败或被取消";
+            }
+        }
+
+        async function sendCommand(cmdId) {
+            if (!bleCharacteristic) return;
+            try {
+                // 将指令 ID 打包成 8位 无符号整数发送给 ESP32
+                let data = new Uint8Array([cmdId]);
+                await bleCharacteristic.writeValue(data);
+                console.log("已发送指令: " + cmdId);
+            } catch (error) {
+                console.error("发送失败", error);
+            }
+        }
+    </script>
+</body>
+</html>
