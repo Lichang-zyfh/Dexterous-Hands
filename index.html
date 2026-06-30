@@ -56,6 +56,7 @@
         <button class="cmdBtn" onclick="sendActionCommand(1)">✊ 抓握 (Grasp)</button>
         <button class="cmdBtn" onclick="sendActionCommand(2)">🖐️ 松开 (Release)</button>
         <button class="cmdBtn" onclick="sendActionCommand(4)">🤖 重新开机归零</button>
+        <button class="cmdBtn" id="indexRehomeBtn" onclick="sendActionCommand(5)" style="background-color: #8e44ad; display: none;">👆 食指单独寻零</button>
         <br><br>
         <button class="debugBtn" id="enterDebugBtn" onclick="enterDebugMode()">🛠️ 进入二指位姿调试</button>
     </div>
@@ -159,8 +160,10 @@
         function switchMode(mode) {
             if (mode === 0) {
                 sendActionCommand(20); // 切换到圆柱模式
+                document.getElementById('indexRehomeBtn').style.display = 'none';
             } else if (mode === 1) {
                 sendActionCommand(21); // 切换到二指模式
+                document.getElementById('indexRehomeBtn').style.display = 'inline-block';
             }
         }
 
