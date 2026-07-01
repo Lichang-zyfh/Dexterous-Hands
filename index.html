@@ -58,13 +58,13 @@
         <button class="cmdBtn" onclick="sendActionCommand(4)">🤖 重新开机归零</button>
         <button class="cmdBtn" id="indexRehomeBtn" onclick="sendActionCommand(5)" style="background-color: #8e44ad; display: none;">👆 食指单独寻零</button>
         <br><br>
-        <button class="debugBtn" id="enterDebugBtn" onclick="enterDebugMode()">🛠️ 进入二指位姿调试</button>
+        <button class="debugBtn" id="enterDebugBtn" onclick="enterDebugMode()">🛠️ 进入位姿调试</button>
     </div>
 
     <!-- 调试面板 -->
     <div id="debugPanel">
-        <h3>二指位姿动态调试</h3>
-        <p style="font-size: 14px; color: #666;">拖动滑块实时微调各舵机位姿 (数值为偏置差值)</p>
+        <h3>位姿动态调试</h3>
+        <p style="font-size: 14px; color: #666;">以微微握紧零点为基准：正值=握紧方向，负值=张开方向</p>
         
         <!-- 滑块由 JS 动态生成 -->
         <div id="sliders"></div>
@@ -94,10 +94,10 @@
             for (let i = 0; i < 7; i++) {
                 const div = document.createElement('div');
                 div.className = 'slider-container';
-                // 滑块范围 0 到 3000 (代表往握拳方向移动的偏移量)
+                // 双向偏置：负值=张开，0=零点，正值=握紧
                 div.innerHTML = `
                     <label>${fingerNames[i]}:</label>
-                    <input type="range" id="slider_${i}" min="0" max="3000" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
+                    <input type="range" id="slider_${i}" min="-2000" max="3000" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
                     <span id="val_${i}">0</span>
                 `;
                 container.appendChild(div);
@@ -167,12 +167,15 @@
             }
         }
 
-        // 发送调试滑块数据 [0x02, id, val_low, val_high]
+        // 发送调试滑块数据 [0x02, id, offset_low, offset_high] (int16 有符号)
         async function sendSliderData(id, val) {
             if (!bleCharacteristic || !isDebugMode) return;
             try {
-                let low = val & 0xFF;
-                let high = (val >> 8) & 0xFF;
+                let offset = parseInt(val, 10);
+                if (offset < -32768) offset = -32768;
+                if (offset > 32767) offset = 32767;
+                let low = offset & 0xFF;
+                let high = (offset >> 8) & 0xFF;
                 let data = new Uint8Array([0x02, id, low, high]);
                 await bleCharacteristic.writeValue(data);
             } catch (error) {
