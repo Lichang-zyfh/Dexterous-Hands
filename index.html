@@ -10,9 +10,10 @@
         #connectBtn { background-color: #4CAF50; color: white; border: none; font-size: 20px; padding: 15px 30px; }
         .cmdBtn { background-color: #008CBA; color: white; border: none; display: none; }
         .debugBtn { background-color: #f39c12; color: white; border: none; display: none; }
+        .poseBtn { background-color: #9b59b6; color: white; border: none; display: none; }
         #status { margin: 15px; font-weight: bold; color: #555; }
         
-        #debugPanel {
+        #debugPanel, #posePanel {
             display: none;
             margin-top: 20px;
             padding: 15px;
@@ -22,6 +23,10 @@
             max-width: 500px;
             margin-left: auto;
             margin-right: auto;
+        }
+        #posePanel {
+            border-color: #9b59b6;
+            background-color: #f5eef8;
         }
         .slider-container {
             margin: 15px 0;
@@ -51,14 +56,31 @@
             <label for="modePower">圆柱抓握</label>
             <input type="radio" id="modePinch" name="graspMode" value="1" onchange="switchMode(1)">
             <label for="modePinch">二指抓握</label>
+            <input type="radio" id="modePose" name="graspMode" value="2" onchange="switchMode(2)">
+            <label for="modePose">Pose展示</label>
         </div>
 
+        <div id="graspControls">
         <button class="cmdBtn" onclick="sendActionCommand(1)">✊ 抓握 (Grasp)</button>
         <button class="cmdBtn" onclick="sendActionCommand(2)">🖐️ 松开 (Release)</button>
         <button class="cmdBtn" onclick="sendActionCommand(4)">🤖 重新开机归零</button>
         <button class="cmdBtn" id="indexRehomeBtn" onclick="sendActionCommand(5)" style="background-color: #8e44ad; display: none;">👆 食指单独寻零</button>
+        </div>
         <br><br>
         <button class="debugBtn" id="enterDebugBtn" onclick="enterDebugMode()">🛠️ 进入位姿调试</button>
+    </div>
+
+    <!-- Pose 展示面板 -->
+    <div id="posePanel">
+        <h3>Pose 展示</h3>
+        <p style="font-size: 14px; color: #666;">点击按钮摆出预设手势，完成后保持姿态</p>
+        <button class="poseBtn" onclick="sendActionCommand(30)">☝️ 伸食指</button>
+        <button class="poseBtn" onclick="sendActionCommand(31)">👌 OK 手势</button>
+        <br>
+        <button class="poseBtn" onclick="sendActionCommand(32)">✌️ 耶手势</button>
+        <button class="poseBtn" onclick="sendActionCommand(33)">🤟 ILY 手势</button>
+        <br><br>
+        <button class="cmdBtn" onclick="sendActionCommand(2)" style="display: inline-block; background-color: #34495e;">🔄 回到零点</button>
     </div>
 
     <!-- 调试面板 -->
@@ -125,6 +147,7 @@
                 // 显示控制按钮
                 document.querySelectorAll('.cmdBtn').forEach(btn => btn.style.display = 'inline-block');
                 document.querySelectorAll('.debugBtn').forEach(btn => btn.style.display = 'inline-block');
+                updateModeUI(parseInt(document.querySelector('input[name="graspMode"]:checked').value));
 
                 initSliders();
 
@@ -135,6 +158,7 @@
                     document.querySelectorAll('.cmdBtn').forEach(btn => btn.style.display = 'none');
                     document.querySelectorAll('.debugBtn').forEach(btn => btn.style.display = 'none');
                     document.getElementById('debugPanel').style.display = 'none';
+                    document.getElementById('posePanel').style.display = 'none';
                     isDebugMode = false;
                 });
 
@@ -156,15 +180,34 @@
             }
         }
 
-        // 切换抓握模式
+        // 切换模式 UI
+        function updateModeUI(mode) {
+            const graspControls = document.getElementById('graspControls');
+            const posePanel = document.getElementById('posePanel');
+            const indexRehomeBtn = document.getElementById('indexRehomeBtn');
+
+            if (mode === 2) {
+                graspControls.style.display = 'none';
+                posePanel.style.display = 'block';
+                document.querySelectorAll('.poseBtn').forEach(btn => btn.style.display = 'inline-block');
+            } else {
+                graspControls.style.display = 'block';
+                posePanel.style.display = 'none';
+                document.querySelectorAll('.poseBtn').forEach(btn => btn.style.display = 'none');
+                indexRehomeBtn.style.display = (mode === 1) ? 'inline-block' : 'none';
+            }
+        }
+
+        // 切换抓握/Pose 模式
         function switchMode(mode) {
             if (mode === 0) {
-                sendActionCommand(20); // 切换到圆柱模式
-                document.getElementById('indexRehomeBtn').style.display = 'none';
+                sendActionCommand(20);
             } else if (mode === 1) {
-                sendActionCommand(21); // 切换到二指模式
-                document.getElementById('indexRehomeBtn').style.display = 'inline-block';
+                sendActionCommand(21);
+            } else if (mode === 2) {
+                sendActionCommand(22);
             }
+            updateModeUI(mode);
         }
 
         // 发送调试滑块数据 [0x02, id, offset_low, offset_high] (int16 有符号)
