@@ -36,7 +36,8 @@
         }
         .slider-container label { font-weight: bold; width: 120px; text-align: right; margin-right: 15px; }
         .slider-container input[type=range] { flex-grow: 1; margin-right: 15px; }
-        .slider-container span { width: 50px; text-align: left; }
+        .slider-container .val-num { width: 50px; text-align: left; }
+        .slider-container .val-pct { width: 45px; text-align: left; color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -152,7 +153,8 @@
                 div.innerHTML = `
                     <label>${fingerNames[i]}:</label>
                     <input type="range" id="slider_${i}" min="0" max="100" step="1" value="50" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
-                    <span id="val_${i}">0</span>
+                    <span id="val_${i}" class="val-num">0</span>
+                    <span id="pct_${i}" class="val-pct">50%</span>
                 `;
                 container.appendChild(div);
             }
@@ -260,8 +262,10 @@
         let sliderTimeouts = {};
         function onSliderChange(id) {
             const slider = document.getElementById(`slider_${id}`);
-            const val = visualToPhysical(id, parseInt(slider.value, 10));
+            const visual = parseInt(slider.value, 10);
+            const val = visualToPhysical(id, visual);
             document.getElementById(`val_${id}`).innerText = val;
+            document.getElementById(`pct_${id}`).innerText = `${visual}%`;
             
             if (sliderTimeouts[id]) {
                 clearTimeout(sliderTimeouts[id]);
@@ -276,6 +280,7 @@
             for (let i = 0; i < 7; i++) {
                 document.getElementById(`slider_${i}`).value = 50;
                 document.getElementById(`val_${i}`).innerText = 0;
+                document.getElementById(`pct_${i}`).innerText = '50%';
             }
             sendActionCommand(10); // 进入调试模式
             isDebugMode = true;
