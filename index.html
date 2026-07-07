@@ -120,12 +120,6 @@
             [-794, 2504],  // 小指(6)
         ];
 
-        // 对称滑块范围，使 0 值在轨道正中间
-        function getSliderExtent(id) {
-            const [minVal, maxVal] = fingerLimits[id];
-            return Math.max(Math.abs(minVal), Math.abs(maxVal));
-        }
-
         function clampSliderValue(id, val) {
             const [minVal, maxVal] = fingerLimits[id];
             return Math.min(maxVal, Math.max(minVal, val));
@@ -136,13 +130,13 @@
             const container = document.getElementById('sliders');
             container.innerHTML = '';
             for (let i = 0; i < 7; i++) {
-                const extent = getSliderExtent(i);
+                const [minVal, maxVal] = fingerLimits[i];
                 const div = document.createElement('div');
                 div.className = 'slider-container';
-                // 双向偏置：负值=张开，0=零点，正值=握紧
+                // min/max 直接对应物理限位：最左=最低限位，最右=最高限位
                 div.innerHTML = `
                     <label>${fingerNames[i]}:</label>
-                    <input type="range" id="slider_${i}" min="${-extent}" max="${extent}" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
+                    <input type="range" id="slider_${i}" min="${minVal}" max="${maxVal}" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
                     <span id="val_${i}">0</span>
                 `;
                 container.appendChild(div);
