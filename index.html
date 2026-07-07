@@ -120,18 +120,29 @@
             [-794, 2504],  // 小指(6)
         ];
 
+        // 对称滑块范围，使 0 值在轨道正中间
+        function getSliderExtent(id) {
+            const [minVal, maxVal] = fingerLimits[id];
+            return Math.max(Math.abs(minVal), Math.abs(maxVal));
+        }
+
+        function clampSliderValue(id, val) {
+            const [minVal, maxVal] = fingerLimits[id];
+            return Math.min(maxVal, Math.max(minVal, val));
+        }
+
         // 初始化滑块
         function initSliders() {
             const container = document.getElementById('sliders');
             container.innerHTML = '';
             for (let i = 0; i < 7; i++) {
-                const [minVal, maxVal] = fingerLimits[i];
+                const extent = getSliderExtent(i);
                 const div = document.createElement('div');
                 div.className = 'slider-container';
                 // 双向偏置：负值=张开，0=零点，正值=握紧
                 div.innerHTML = `
                     <label>${fingerNames[i]}:</label>
-                    <input type="range" id="slider_${i}" min="${minVal}" max="${maxVal}" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
+                    <input type="range" id="slider_${i}" min="${-extent}" max="${extent}" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
                     <span id="val_${i}">0</span>
                 `;
                 container.appendChild(div);
@@ -226,10 +237,7 @@
         async function sendSliderData(id, val) {
             if (!bleCharacteristic || !isDebugMode) return;
             try {
-                const [minVal, maxVal] = fingerLimits[id];
-                let offset = parseInt(val, 10);
-                if (offset < minVal) offset = minVal;
-                if (offset > maxVal) offset = maxVal;
+                let offset = clampSliderValue(id, parseInt(val, 10));
                 let low = offset & 0xFF;
                 let high = (offset >> 8) & 0xFF;
                 let data = new Uint8Array([0x02, id, low, high]);
@@ -242,14 +250,18 @@
         // 节流定时器，避免滑块滑动时发送频率过高导致蓝牙拥塞
         let sliderTimeouts = {};
         function onSliderChange(id) {
-            const val = document.getElementById(`slider_${id}`).value;
+            const slider = document.getElementById(`slider_${id}`);
+            const val = clampSliderValue(id, parseInt(slider.value, 10));
+            if (parseInt(slider.value, 10) !== val) {
+                slider.value = val;
+            }
             document.getElementById(`val_${id}`).innerText = val;
             
             if (sliderTimeouts[id]) {
                 clearTimeout(sliderTimeouts[id]);
             }
             sliderTimeouts[id] = setTimeout(() => {
-                sendSliderData(id, parseInt(val));
+                sendSliderData(id, val);
             }, 30); // 30ms 节流
         }
 
