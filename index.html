@@ -89,7 +89,7 @@
     <!-- 调试面板 -->
     <div id="debugPanel">
         <h3>位姿动态调试</h3>
-        <p style="font-size: 14px; color: #666;">以微微握紧零点为基准：正值=握紧方向，负值=张开方向</p>
+        <p style="font-size: 14px; color: #666;">以五指张开准备姿态为基准：0=张开，向右拖=握紧方向</p>
         
         <!-- 滑块由 JS 动态生成 -->
         <div id="sliders"></div>
@@ -112,37 +112,23 @@
             "食指(3)", "中指(4)", "无名指(5)", "小指(6)"
         ];
 
-        // 各关节物理限位 [min, max]：负值=张开方向，正值=握紧方向
-        const fingerLimits = [
-            [-783, 423],   // 拇指外展(0)
-            [-605, 719],   // 拇指弯曲(1)
-            [-14, 1357],   // 拇指根部(2)
-            [-936, 2385],  // 食指(3)
-            [-889, 2480],  // 中指(4)
-            [-877, 2634],  // 无名指(5)
-            [-794, 2504],  // 小指(6)
+        // 各关节调试量程（与 homing_ready.c READY_BACKOFF 一致）：0=张开准备姿态，最大=握拳方向
+        const fingerRanges = [
+            1206,  // 拇指外展(0)
+            1324,  // 拇指弯曲(1)
+            1371,  // 拇指根部(2)
+            3321,  // 食指(3)
+            3369,  // 中指(4)
+            3511,  // 无名指(5)
+            3298,  // 小指(6)
         ];
 
         function clampSliderValue(id, val) {
-            const [minVal, maxVal] = fingerLimits[id];
-            return Math.min(maxVal, Math.max(minVal, val));
-        }
-
-        // 物理值 ↔ 视觉位置(0~100) 分段映射：最左=最低限位，中间=0，最右=最高限位
-        function physicalToVisual(id, val) {
-            const [minVal, maxVal] = fingerLimits[id];
-            if (val <= 0) {
-                return 50 * (val - minVal) / (-minVal);
-            }
-            return 50 + 50 * val / maxVal;
+            return Math.min(fingerRanges[id], Math.max(0, val));
         }
 
         function visualToPhysical(id, visual) {
-            const [minVal, maxVal] = fingerLimits[id];
-            if (visual <= 50) {
-                return Math.round(minVal + (visual / 50) * (-minVal));
-            }
-            return Math.round(((visual - 50) / 50) * maxVal);
+            return Math.round((visual / 100) * fingerRanges[id]);
         }
 
         // 初始化滑块
@@ -154,9 +140,9 @@
                 div.className = 'slider-container';
                 div.innerHTML = `
                     <label>${fingerNames[i]}:</label>
-                    <input type="range" id="slider_${i}" min="0" max="100" step="1" value="50" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
+                    <input type="range" id="slider_${i}" min="0" max="100" step="1" value="0" oninput="onSliderChange(${i})" onchange="onSliderChange(${i})">
                     <span id="val_${i}" class="val-num">0</span>
-                    <span id="pct_${i}" class="val-pct">50%</span>
+                    <span id="pct_${i}" class="val-pct">0%</span>
                 `;
                 container.appendChild(div);
             }
@@ -278,11 +264,11 @@
         }
 
         function enterDebugMode() {
-            // 重置滑块：视觉位置 50 = 物理零点 0
+            // 重置滑块：最左侧 = 张开准备姿态 (offset 0)
             for (let i = 0; i < 7; i++) {
-                document.getElementById(`slider_${i}`).value = 50;
+                document.getElementById(`slider_${i}`).value = 0;
                 document.getElementById(`val_${i}`).innerText = 0;
-                document.getElementById(`pct_${i}`).innerText = '50%';
+                document.getElementById(`pct_${i}`).innerText = '0%';
             }
             sendActionCommand(10); // 进入调试模式
             isDebugMode = true;
