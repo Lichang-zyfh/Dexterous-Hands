@@ -11,6 +11,9 @@
         .cmdBtn { background-color: #008CBA; color: white; border: none; display: none; }
         .debugBtn { background-color: #f39c12; color: white; border: none; display: none; }
         .poseBtn { background-color: #9b59b6; color: white; border: none; display: none; }
+        .modeBtn { background-color: #ecf0f1; color: #333; border: 2px solid #bdc3c7; display: none; }
+        .modeBtn.active { background-color: #2980b9; color: white; border-color: #2980b9; }
+        #modeHint { font-size: 14px; color: #888; margin-bottom: 10px; }
         #status { margin: 15px; font-weight: bold; color: #555; }
         
         #debugPanel, #posePanel {
@@ -52,13 +55,10 @@
     <div id="baseControls">
         <!-- 新增模式切换选项 -->
         <div style="margin-bottom: 15px;">
-            <label style="font-weight:bold; margin-right: 10px;">当前模式:</label>
-            <input type="radio" id="modePower" name="graspMode" value="0" checked onchange="switchMode(0)">
-            <label for="modePower">圆柱抓握</label>
-            <input type="radio" id="modePinch" name="graspMode" value="1" onchange="switchMode(1)">
-            <label for="modePinch">二指抓握</label>
-            <input type="radio" id="modePose" name="graspMode" value="2" onchange="switchMode(2)">
-            <label for="modePose">Pose展示</label>
+            <div id="modeHint">当前模式: 未选中（手掌完全张开）</div>
+            <button class="modeBtn" id="modePower" onclick="toggleMode(0)">圆柱抓握</button>
+            <button class="modeBtn" id="modePinch" onclick="toggleMode(1)">二指抓握</button>
+            <button class="modeBtn" id="modePose" onclick="toggleMode(2)">Pose展示</button>
         </div>
 
         <div id="graspControls">
@@ -106,6 +106,10 @@
         let bleCharacteristic = null;
         let bleDevice = null;
         let isDebugMode = false;
+        let activeMode = null; // null=未选中, 0=圆柱, 1=二指, 2=Pose
+
+        const modeNames = ['圆柱抓握', '二指抓握', 'Pose展示'];
+        const modeCmdIds = [20, 21, 22];
 
         const fingerNames = [
             "拇指外展(0)", "拇指弯曲(1)", "拇指根部(2)",
@@ -169,7 +173,8 @@
                 // 显示控制按钮
                 document.querySelectorAll('.cmdBtn').forEach(btn => btn.style.display = 'inline-block');
                 document.querySelectorAll('.debugBtn').forEach(btn => btn.style.display = 'inline-block');
-                updateModeUI(parseInt(document.querySelector('input[name="graspMode"]:checked').value));
+                document.querySelectorAll('.modeBtn').forEach(btn => btn.style.display = 'inline-block');
+                updateModeUI(activeMode);
 
                 initSliders();
 
@@ -182,6 +187,8 @@
                     document.getElementById('debugPanel').style.display = 'none';
                     document.getElementById('posePanel').style.display = 'none';
                     isDebugMode = false;
+                    activeMode = null;
+                    updateModeUI(null);
                 });
 
             } catch (error) {
@@ -202,11 +209,26 @@
             }
         }
 
-        // 切换模式 UI
+        // 切换/取消模式（再次点击同一按钮即取消）
         function updateModeUI(mode) {
             const graspControls = document.getElementById('graspControls');
             const posePanel = document.getElementById('posePanel');
             const indexRehomeBtn = document.getElementById('indexRehomeBtn');
+            const modeHint = document.getElementById('modeHint');
+
+            document.getElementById('modePower').classList.toggle('active', mode === 0);
+            document.getElementById('modePinch').classList.toggle('active', mode === 1);
+            document.getElementById('modePose').classList.toggle('active', mode === 2);
+
+            if (mode === null) {
+                modeHint.innerText = '当前模式: 未选中（手掌完全张开）';
+                graspControls.style.display = 'none';
+                posePanel.style.display = 'none';
+                document.querySelectorAll('.poseBtn').forEach(btn => btn.style.display = 'none');
+                return;
+            }
+
+            modeHint.innerText = '当前模式: ' + modeNames[mode];
 
             if (mode === 2) {
                 graspControls.style.display = 'none';
@@ -220,16 +242,14 @@
             }
         }
 
-        // 切换抓握/Pose 模式
-        function switchMode(mode) {
-            if (mode === 0) {
-                sendActionCommand(20);
-            } else if (mode === 1) {
-                sendActionCommand(21);
-            } else if (mode === 2) {
-                sendActionCommand(22);
+        function toggleMode(mode) {
+            sendActionCommand(modeCmdIds[mode]);
+            if (activeMode === mode) {
+                activeMode = null;
+            } else {
+                activeMode = mode;
             }
-            updateModeUI(mode);
+            updateModeUI(activeMode);
         }
 
         // 发送调试滑块数据 [0x02, id, offset_low, offset_high] (int16 有符号)
