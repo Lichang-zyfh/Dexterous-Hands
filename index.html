@@ -110,6 +110,7 @@
 
         const modeNames = ['圆柱抓握', '二指抓握', 'Pose展示'];
         const modeCmdIds = [20, 21, 22];
+        const deselectCmdId = 23;
 
         const fingerNames = [
             "拇指外展(0)", "拇指弯曲(1)", "拇指根部(2)",
@@ -243,10 +244,11 @@
         }
 
         function toggleMode(mode) {
-            sendActionCommand(modeCmdIds[mode]);
             if (activeMode === mode) {
+                sendActionCommand(deselectCmdId);
                 activeMode = null;
             } else {
+                sendActionCommand(modeCmdIds[mode]);
                 activeMode = mode;
             }
             updateModeUI(activeMode);
